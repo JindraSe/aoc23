@@ -7,11 +7,19 @@ struct Revelation {
 }
 
 impl Revelation {
+    fn empty() -> Revelation {
+        Revelation {
+            reds: 0,
+            greens: 0,
+            blues: 0,
+        }
+    }
+
     fn from_str(as_str: &str) -> Revelation {
         let mut split_str = as_str.split(' ');
 
-        let count = str::parse::<u32>(split_str.nth(0).unwrap()).unwrap();
-        let color = split_str.nth(0).unwrap();
+        let count = str::parse::<u32>(split_str.next().unwrap()).unwrap();
+        let color = split_str.next().unwrap();
 
         return match color {
             "red" => Revelation {
@@ -29,11 +37,7 @@ impl Revelation {
                 greens: 0,
                 blues: count,
             },
-            _ => Revelation {
-                reds: 0,
-                greens: 0,
-                blues: 0,
-            },
+            _ => Self::empty()
         };
     }
 
@@ -67,11 +71,7 @@ impl Game {
     }
 
     fn smallest_possible(&self) -> Revelation {
-        let mut res = Revelation {
-            reds: 0,
-            greens: 0,
-            blues: 0,
-        };
+        let mut res = Revelation::empty();
 
         for revelation in &self.revelations {
             res.reds = std::cmp::max(res.reds, revelation.reds);
@@ -91,21 +91,18 @@ impl Game {
 fn game_from_line(line: &str) -> Game {
     let mut split_line = line.split(": ");
 
-    let prefix = split_line.nth(0);
-    let suffix = split_line.nth(0);
+    let prefix = split_line.next();
+    let suffix = split_line.next();
 
     let mut sets: Vec<Revelation> = Vec::new();
 
     for revelation_str in suffix.unwrap().split("; ") {
-        let mut revelation = Revelation {
-            reds: 0,
-            blues: 0,
-            greens: 0,
-        };
+        let mut revelation = Revelation::empty();
 
         for record in revelation_str.split(", ") {
             revelation = revelation.combine(&Revelation::from_str(record));
         }
+
         sets.push(revelation);
     }
 
