@@ -27,6 +27,7 @@ impl ResourceTranslationRule {
     }
 }
 
+#[derive(Clone)]
 struct ResourceRange {
     from: u64,
     len: u64,
@@ -52,6 +53,7 @@ impl ResourceMap {
             rules: lines
                 .split('\n')
                 .skip(1)
+                .filter(|line| !line.is_empty())
                 .map(|line| ResourceTranslationRule::from_line(line))
                 .collect(),
         }
@@ -82,49 +84,24 @@ impl ResourceMap {
 
 struct Almanac<T> {
     seeds: Vec<T>,
-    seed_to_soil: ResourceMap,
-    soil_to_fertilizer: ResourceMap,
-    fertilizer_to_water: ResourceMap,
-    water_to_light: ResourceMap,
-    light_to_temperature: ResourceMap,
-    temperature_to_humidity: ResourceMap,
-    humidity_to_location: ResourceMap,
+    resource_maps: Vec<ResourceMap>,
 }
 
 impl<T> Almanac<T> {
-    // beautiful
     fn seed_to_location(&self, seed: u64) -> u64 {
-        self.humidity_to_location.translate(
-            self.temperature_to_humidity.translate(
-                self.light_to_temperature.translate(
-                    self.water_to_light.translate(
-                        self.fertilizer_to_water.translate(
-                            self.soil_to_fertilizer
-                                .translate(self.seed_to_soil.translate(seed)),
-                        ),
-                    ),
-                ),
-            ),
-        )
+        self.resource_maps
+            .iter()
+            .fold(seed, |resource, map| map.translate(resource))
     }
 }
 
 impl Almanac<ResourceRange> {
-    // even more beautiful
     fn get_location_ranges(&self) -> Vec<ResourceRange> {
-        self.humidity_to_location.translate_ranges(
-            &self.temperature_to_humidity.translate_ranges(
-                &self.light_to_temperature.translate_ranges(
-                    &self.water_to_light.translate_ranges(
-                        &self.fertilizer_to_water.translate_ranges(
-                            &self
-                                .soil_to_fertilizer
-                                .translate_ranges(&self.seed_to_soil.translate_ranges(&self.seeds)),
-                        ),
-                    ),
-                ),
-            ),
-        )
+        self.resource_maps
+            .iter()
+            .fold(self.seeds.clone(), |ranges, map| {
+                map.translate_ranges(&ranges)
+            })
     }
 }
 
@@ -161,16 +138,17 @@ where
 
     let mut split_content = content.split("\n\n");
 
-    Almanac {
-        seeds: seed_reader(&split_content.next().unwrap()[7..]),
-        seed_to_soil: ResourceMap::from_lines(split_content.next().unwrap()),
-        soil_to_fertilizer: ResourceMap::from_lines(split_content.next().unwrap()),
-        fertilizer_to_water: ResourceMap::from_lines(split_content.next().unwrap()),
-        water_to_light: ResourceMap::from_lines(split_content.next().unwrap()),
-        light_to_temperature: ResourceMap::from_lines(split_content.next().unwrap()),
-        temperature_to_humidity: ResourceMap::from_lines(split_content.next().unwrap()),
-        humidity_to_location: ResourceMap::from_lines(split_content.next().unwrap()),
+    let seeds = seed_reader(&split_content.next().unwrap()[7..]);
+    let mut resource_maps = Vec::new();
+
+    for lines in split_content {
+        resource_maps.push(ResourceMap::from_lines(lines));
     }
+
+    return Almanac {
+        seeds,
+        resource_maps,
+    };
 }
 
 fn main() {
